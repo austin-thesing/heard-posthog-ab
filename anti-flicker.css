@@ -2,36 +2,27 @@
 /* This CSS should be placed in the <head> section before any other scripts */
 
 /* Hide body content initially to prevent flicker */
+/* Anti-flicker CSS - prevents content flash during A/B test */
 body {
-  visibility: hidden !important;
+  opacity: 0 !important;
 }
 
-/* Show content once experiment is resolved */
 body[data-ab-test="resolved"] {
-  visibility: visible !important;
+  opacity: 1 !important;
 }
 
-/* Optional: Add a subtle loading state */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #ffffff;
-  z-index: 9999;
-  pointer-events: none;
-}
-
-body[data-ab-test="resolved"]::before {
-  display: none;
-}
-
-/* Fallback: Show content after 2 seconds even if script fails */
+/* Fallback: Show content after 2 seconds */
 @keyframes show-content {
-  0% { visibility: hidden; }
-  100% { visibility: visible; }
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+body {
+  animation: show-content 0s 2s forwards;
 }
 
 body {
