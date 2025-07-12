@@ -2,17 +2,17 @@
 /* This CSS should be placed in the <head> section before any other scripts */
 
 /* Hide body content initially to prevent flicker */
-/* Anti-flicker CSS - prevents content flash during A/B test */
 body {
   opacity: 0 !important;
+  transition: opacity 0.1s ease-in;
 }
 
 body[data-ab-test="resolved"] {
   opacity: 1 !important;
 }
 
-/* Fallback: Show content after 2 seconds */
-@keyframes show-content {
+/* Fallback: Show content after 800ms if script fails */
+@keyframes show-content-fallback {
   0% {
     opacity: 0;
   }
@@ -22,9 +22,5 @@ body[data-ab-test="resolved"] {
 }
 
 body {
-  animation: show-content 0s 2s forwards;
-}
-
-body {
-  animation: show-content 0s 2s forwards;
+  animation: show-content-fallback 0s 0.4s forwards;
 }

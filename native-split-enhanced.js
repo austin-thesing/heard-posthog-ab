@@ -17,7 +17,7 @@
     posthogProjectKey: "phc_iPG1CFswhWTN16Q1f3uwTaNehTzqCP3ilgVEuggQwRN", // Replace with your PostHog project key
     posthogHost: "https://us.i.posthog.com", // Replace if using self-hosted PostHog
     fallbackToControl: true, // Show control if feature flag fails
-    maxWaitTime: 3000, // Max time to wait for PostHog (3 seconds)
+    maxWaitTime: 250, // Max time to wait for PostHog (250ms)
     retryAttempts: 3, // Number of retry attempts for PostHog initialization
     retryDelay: 500, // Delay between retries in ms
     experimentVersion: "1.0", // Experiment version for tracking
@@ -221,31 +221,40 @@
 
   // Enhanced experiment exposure tracking
   function trackExperimentExposure(variant, context = {}) {
-    if (window.posthog) {
-      // Use PostHog's native experiment tracking
-      posthog.capture("$feature_flag_called", {
-        $feature_flag: CONFIG.featureFlagKey,
-        $feature_flag_response: variant === "test",
-        $feature_flag_payload: {
+    if (window.posthog && !window._posthogExposureTracked) {
+      // Prevent duplicate exposure tracking
+      window._posthogExposureTracked = true;
+
+      try {
+        // Use PostHog's native experiment tracking
+        posthog.capture("$feature_flag_called", {
+          $feature_flag: CONFIG.featureFlagKey,
+          $feature_flag_response: variant === "test",
+          $feature_flag_payload: {
+            experiment_key: CONFIG.experimentKey,
+            variant: variant,
+            version: CONFIG.experimentVersion,
+            ...context,
+          },
+        });
+
+        // Also track custom event for additional analysis
+        posthog.capture("experiment_exposure", {
           experiment_key: CONFIG.experimentKey,
           variant: variant,
-          version: CONFIG.experimentVersion,
+          page_path: getCurrentPath(),
+          feature_flag: CONFIG.featureFlagKey,
+          experiment_version: CONFIG.experimentVersion,
+          exposure_type: context.exposure_type || "standard",
           ...context,
-        },
-      });
+        });
 
-      // Also track custom event for additional analysis
-      posthog.capture("experiment_exposure", {
-        experiment_key: CONFIG.experimentKey,
-        variant: variant,
-        page_path: getCurrentPath(),
-        feature_flag: CONFIG.featureFlagKey,
-        experiment_version: CONFIG.experimentVersion,
-        exposure_type: context.exposure_type || "standard",
-        ...context,
-      });
-
-      log("Tracked experiment exposure:", variant, context);
+        log("Tracked experiment exposure:", variant, context);
+      } catch (error) {
+        log("Error tracking exposure:", error);
+        // Reset flag on error
+        window._posthogExposureTracked = false;
+      }
     }
   }
 
@@ -267,51 +276,81 @@
   }
 
   function showContent() {
+    // Set attribute for CSS targeting
     document.body.setAttribute("data-ab-test", "resolved");
+
+    // Force override the opacity with inline styles to beat !important
+    document.body.style.setProperty("opacity", "1", "important");
+    document.body.style.setProperty("animation", "none", "important");
+
     log("Content revealed");
   }
 
   // Enhanced HubSpot form tracking with goals
   function setupHubSpotFormTracking() {
+    // Store variant to avoid repeated PostHog calls during tracking
+    let cachedVariant = null;
+    let cachedFlagValue = null;
+
+    // Get variant once and cache it
+    function getCachedVariant() {
+      if (cachedVariant === null && window.posthog) {
+        cachedFlagValue = posthog.getFeatureFlag(CONFIG.featureFlagKey);
+        cachedVariant = cachedFlagValue === true ? "test" : "control";
+      }
+      return { variant: cachedVariant, flagValue: cachedFlagValue };
+    }
+
     // Track HubSpot form submissions as conversions
     function trackConversion(formData = {}) {
       if (window.posthog) {
-        const flagValue = posthog.getFeatureFlag(CONFIG.featureFlagKey);
-        const variant = flagValue === true ? "test" : "control";
+        const { variant, flagValue } = getCachedVariant();
 
-        // Track as PostHog goal
-        posthog.capture("goal_completed", {
-          goal_key: "hubspot_form_submission",
-          experiment_key: CONFIG.experimentKey,
-          variant: variant,
-          feature_flag: CONFIG.featureFlagKey,
-          feature_flag_value: flagValue,
-          experiment_version: CONFIG.experimentVersion,
-          page_path: getCurrentPath(),
-          ...formData,
-        });
+        // Prevent recursive calls by checking if we're already tracking
+        if (window._posthogTrackingInProgress) {
+          return;
+        }
+        window._posthogTrackingInProgress = true;
 
-        // Also track standard conversion event
-        posthog.capture("conversion", {
-          experiment_key: CONFIG.experimentKey,
-          variant: variant,
-          conversion_type: "hubspot_form_submission",
-          page_path: getCurrentPath(),
-          feature_flag: CONFIG.featureFlagKey,
-          feature_flag_value: flagValue,
-          experiment_version: CONFIG.experimentVersion,
-          ...formData,
-        });
+        try {
+          // Track as PostHog goal
+          posthog.capture("goal_completed", {
+            goal_key: "hubspot_form_submission",
+            experiment_key: CONFIG.experimentKey,
+            variant: variant,
+            feature_flag: CONFIG.featureFlagKey,
+            feature_flag_value: flagValue,
+            experiment_version: CONFIG.experimentVersion,
+            page_path: getCurrentPath(),
+            ...formData,
+          });
 
-        log("Tracked conversion for variant:", variant);
+          // Also track standard conversion event
+          posthog.capture("conversion", {
+            experiment_key: CONFIG.experimentKey,
+            variant: variant,
+            conversion_type: "hubspot_form_submission",
+            page_path: getCurrentPath(),
+            feature_flag: CONFIG.featureFlagKey,
+            feature_flag_value: flagValue,
+            experiment_version: CONFIG.experimentVersion,
+            ...formData,
+          });
+
+          log("Tracked conversion for variant:", variant);
+        } finally {
+          // Clear the flag after a short delay
+          setTimeout(() => {
+            window._posthogTrackingInProgress = false;
+          }, 100);
+        }
       }
     }
 
     // Track form field interactions as micro-conversions
     function trackFormInteraction(fieldName, action) {
-      if (window.posthog) {
-        const flagValue = posthog.getFeatureFlag(CONFIG.featureFlagKey);
-        const variant = flagValue === true ? "test" : "control";
+      if (window.posthog && !window._posthogTrackingInProgress) {
+        const { variant } = getCachedVariant();
 
         posthog.capture("form_interaction", {
           experiment_key: CONFIG.experimentKey,
@@ -402,13 +441,34 @@
 
   // Main execution for control page
   async function runExperimentOnControl() {
+    // Emergency content reveal if PostHog takes too long
+    const emergencyTimeout = setTimeout(() => {
+      log("Emergency: Showing content after 150ms");
+      showContent();
+      setupHubSpotFormTracking();
+    }, 150);
+
     try {
       log("Starting PostHog A/B test on control page");
 
-      // Check if we're in the middle of a redirect
+      // Check if we're in the middle of a redirect or just arrived from one
       if (SessionManager.isRedirectPending()) {
-        log("Redirect in progress, showing content");
+        log("Redirect in progress or just completed, showing content immediately");
+        clearTimeout(emergencyTimeout);
+        SessionManager.clearRedirectState();
         showContent();
+        setupHubSpotFormTracking();
+
+        // Track exposure for users who were redirected back to control
+        setTimeout(() => {
+          if (window.posthog) {
+            trackExperimentExposure("control", {
+              exposure_type: "control_view",
+              source_page: "control",
+              navigation_type: "redirect_back",
+            });
+          }
+        }, 100);
         return;
       }
 
@@ -419,6 +479,9 @@
       // Get feature flag value
       const flagValue = await getFeatureFlagValue();
       log("Feature flag value:", flagValue);
+
+      // Clear emergency timeout since we got the flag value
+      clearTimeout(emergencyTimeout);
 
       // Determine variant based on feature flag
       const isTestVariant = flagValue === true;
@@ -437,7 +500,7 @@
         // Small delay to ensure tracking completes
         setTimeout(() => {
           redirectToTestPage();
-        }, 100);
+        }, 50);
       } else {
         // Track control exposure and show content
         trackExperimentExposure(variant, {
@@ -451,6 +514,9 @@
       setupHubSpotFormTracking();
     } catch (error) {
       log("Error running experiment:", error);
+
+      // Clear emergency timeout
+      clearTimeout(emergencyTimeout);
 
       // Track error
       if (window.posthog) {
@@ -466,6 +532,7 @@
       if (CONFIG.fallbackToControl) {
         log("Falling back to control variant");
         showContent();
+        setupHubSpotFormTracking();
       }
     }
   }
@@ -475,7 +542,27 @@
     try {
       log("Starting PostHog A/B test on test page");
 
-      // Initialize PostHog
+      // Check if this is a redirect result - show content immediately
+      if (SessionManager.isRedirectPending()) {
+        log("Arrived via redirect, showing content immediately");
+        SessionManager.clearRedirectState();
+        showContent();
+        setupHubSpotFormTracking();
+
+        // Track exposure for redirect completion
+        setTimeout(() => {
+          if (window.posthog) {
+            trackExperimentExposure("test", {
+              exposure_type: "test_view",
+              source_page: "test",
+              navigation_type: "redirect",
+            });
+          }
+        }, 100);
+        return;
+      }
+
+      // Initialize PostHog for direct navigation
       await initializePostHogWithRetry();
       log("PostHog initialized successfully");
 
@@ -502,7 +589,7 @@
         // Redirect after tracking
         setTimeout(() => {
           redirectToControlPage();
-        }, 100);
+        }, 50);
       }
 
       // Setup conversion tracking
