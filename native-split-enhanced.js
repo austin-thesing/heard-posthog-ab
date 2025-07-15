@@ -9,7 +9,7 @@
 
   // Utility functions
   function log(...args) {
-    const DEBUG = false; // Set to true to enable debug logging
+    const DEBUG = true; // Set to true to enable debug logging
     if (DEBUG) console.log("[PostHog A/B Test Dual Content]", ...args);
   }
 
@@ -43,6 +43,9 @@
   function setElementTextFromAttr(el, attr) {
     const newText = el.getAttribute(attr);
     if (newText !== null) {
+      // Store original display style before making changes
+      const originalDisplay = window.getComputedStyle(el).display;
+
       if (el.childNodes.length > 1 || (el.childNodes.length === 1 && el.childNodes[0].nodeType !== Node.TEXT_NODE)) {
         // Update only the first text node, preserve children (e.g., h1 with span)
         let foundTextNode = false;
@@ -60,6 +63,11 @@
       } else {
         // Leaf node, just set textContent
         el.textContent = newText;
+      }
+
+      // Preserve the original display style to prevent layout shifts
+      if (originalDisplay !== "block") {
+        el.style.setProperty("display", originalDisplay, "important");
       }
     }
     // Always set opacity to 1 to override anti-flicker.css
@@ -137,7 +145,7 @@
         if (!callbackFired) {
           callbackFired = true;
           const flagValue = posthog.getFeatureFlag("free-consult-lp2-test");
-          log("Feature flag loaded via callback:", flagValue);
+          log("Feature flag 'free-consult-lp2-test' loaded via callback:", flagValue);
           resolve(flagValue);
         }
       });
@@ -152,11 +160,11 @@
 
         if (flagValue !== undefined && !callbackFired) {
           callbackFired = true;
-          log("Feature flag loaded via polling after", attempts * 25, "ms:", flagValue);
+          log("Feature flag 'free-consult-lp2-test' loaded via polling after", attempts * 25, "ms:", flagValue);
           resolve(flagValue);
         } else if (attempts >= maxAttempts && !callbackFired) {
           callbackFired = true;
-          log("Feature flag timeout after", attempts * 25, "ms");
+          log("Feature flag 'free-consult-lp2-test' timeout after", attempts * 25, "ms");
           reject(new Error("Feature flag timeout"));
         } else if (!callbackFired) {
           setTimeout(pollForFlags, 25);
@@ -338,13 +346,15 @@
     try {
       log("Starting PostHog A/B test");
 
-      // (REMOVED) Initialize PostHog with retry
-      // await initializePostHogWithRetry();
-      // log("PostHog initialized successfully");
+      // Check if PostHog is available
+      if (!window.posthog) {
+        throw new Error("PostHog is not available on window.posthog");
+      }
+      log("PostHog is available, proceeding with feature flag check");
 
       // Get feature flag value
       const flagValue = await getFeatureFlagValue();
-      log("Feature flag value:", flagValue);
+      log("Feature flag 'free-consult-lp2-test' value:", flagValue);
 
       // Clear emergency timeout since we got the flag value
       clearTimeout(emergencyTimeout);
@@ -352,7 +362,7 @@
       // Determine variant based on feature flag
       // Handle string values "test" and "control"
       const variant = flagValue === "test" ? "test" : "control";
-      log("Assigned variant:", variant);
+      log("Determined variant:", variant, "(from flag value:", flagValue + ")");
 
       // Track experiment exposure
       trackExperimentExposure(variant, {
