@@ -1,7 +1,7 @@
 /**
  * PostHog A/B Test Script for Webflow - Dual Content Version
  * Uses control-content/test-content divs and data attributes for hero text
- * Supports data-hide-until-ready for adjacent elements that should be hidden until content loads
+ * Supports data-hide-until-ready="true" for adjacent elements that should be hidden until content loads
  * Defaults to control variant on any failure
  */
 
@@ -32,14 +32,14 @@
     // Hide hero text elements with data attributes (set opacity to 0)
     const elementsWithTestContent = document.querySelectorAll("[data-test-content]");
     const elementsWithControlContent = document.querySelectorAll("[data-control-content]");
-    const elementsWithHideUntilReady = document.querySelectorAll("[data-hide-until-ready]");
+    const elementsWithHideUntilReady = document.querySelectorAll('[data-hide-until-ready="true"]');
 
     [...elementsWithTestContent, ...elementsWithControlContent, ...elementsWithHideUntilReady].forEach((el) => {
       el.style.setProperty("opacity", "0", "important");
       el.style.transition = "opacity 0.3s ease";
     });
 
-    log("Hidden hero text elements with data attributes and adjacent elements marked with data-hide-until-ready");
+    log('Hidden hero text elements with data attributes and adjacent elements marked with data-hide-until-ready="true"');
   }
 
   function setElementTextFromAttr(el, attr) {
@@ -127,12 +127,12 @@
       }
     });
 
-    // Show elements marked with data-hide-until-ready
-    document.querySelectorAll("[data-hide-until-ready]").forEach((el) => {
+    // Show elements marked with data-hide-until-ready="true"
+    document.querySelectorAll('[data-hide-until-ready="true"]').forEach((el) => {
       el.style.setProperty("opacity", "1", "important");
     });
 
-    log("Content visibility update completed for variant:", variant, "- also showed adjacent elements with data-hide-until-ready");
+    log("Content visibility update completed for variant:", variant, '- also showed adjacent elements with data-hide-until-ready="true"');
   }
 
   // PostHog initialization with retry logic (REMOVED)
