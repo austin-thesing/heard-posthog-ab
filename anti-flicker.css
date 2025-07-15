@@ -9,7 +9,8 @@
 
 /* Hide hero text elements with data attributes initially */
 [data-control-content],
-[data-test-content] {
+[data-test-content],
+[data-hide-until-ready] {
   opacity: 0 !important;
   transition: opacity 0.3s ease;
 }
@@ -30,6 +31,7 @@
   animation: show-control-fallback 0s 2.5s forwards;
 }
 
-[data-control-content] {
+[data-control-content],
+[data-hide-until-ready] {
   animation: show-control-fallback 0s 2.5s forwards;
 }
