@@ -24,25 +24,41 @@ This project has no build process or dependencies. Files are designed to be copy
 
 ### Implementation Details
 
-The solution works by:
-1. Hiding page content initially via CSS
+The dual-content solution works by:
+1. Hiding content divs (.control-content, .test-content) and hero text elements initially via CSS
 2. Loading PostHog and checking feature flags
-3. Redirecting test users from `/free-consult` to `/free-consult/lp2`
+3. Showing appropriate content based on variant assignment (test vs control)
 4. Tracking experiment exposure and form conversions
-5. Revealing content after variant decision (2-second fallback)
+5. Fallback to control content after 2.5 seconds if script fails
+
+### HTML Structure Required
+```html
+<!-- Hero section with data attributes -->
+<h1 data-control-content="Original Headline" data-test-content="New Test Headline"></h1>
+<p data-control-content="Original description" data-test-content="New test description"></p>
+
+<!-- Below-the-fold content -->
+<div class="control-content">
+    <!-- Original content -->
+</div>
+
+<div class="test-content">
+    <!-- Test variant content -->
+</div>
+```
 
 ### PostHog Integration
 - Uses PostHog's JavaScript SDK loaded dynamically
-- Requires feature flag `free-consult-lp2-test` configured in PostHog dashboard
-- Tracks events: `$experiment_started`, `experiment_exposure`, `conversion`
-- Automatically tracks HubSpot form submissions as conversions
+- Requires feature flag configured in PostHog dashboard (default: `free-consult-lp2-test`)
+- Tracks events: `$feature_flag_called`, `experiment_exposure`, `conversion`
+- Automatically tracks form submissions as conversions
 
 ### Configuration Points
-All configuration is in the `CONFIG` object in native-split.js:
+All configuration is in the `CONFIG` object in native-split-enhanced.js:
 - `posthogProjectKey`: Must be replaced with actual PostHog project key
 - `featureFlagKey`: Feature flag name in PostHog (default: `free-consult-lp2-test`)
-- `controlPath`/`testPath`: Page paths for control and test variants
-- `maxWaitTime`: Maximum time to wait for PostHog (default: 3000ms)
+- `experimentKey`: Experiment identifier for tracking
+- `maxWaitTime`: Maximum time to wait for PostHog (default: 2000ms)
 - `debug`: Enable console logging for troubleshooting
 
 ## Important Considerations

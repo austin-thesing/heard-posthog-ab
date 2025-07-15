@@ -1,26 +1,35 @@
-/* Anti-flicker CSS for PostHog A/B Test */
+/* Anti-flicker CSS for PostHog A/B Test - Dual Content Version */
 /* This CSS should be placed in the <head> section before any other scripts */
 
-/* Hide body content initially to prevent flicker */
-body {
+/* Hide content divs initially to prevent flicker */
+.control-content,
+.test-content {
+  display: none !important;
+}
+
+/* Hide hero text elements with data attributes initially */
+[data-control-content],
+[data-test-content] {
   opacity: 0 !important;
-  transition: opacity 0.1s ease-in;
+  transition: opacity 0.3s ease;
 }
 
-body[data-ab-test="resolved"] {
-  opacity: 1 !important;
-}
-
-/* Fallback: Show content after 800ms if script fails */
-@keyframes show-content-fallback {
+/* Fallback: Show control content after 2.5s if script fails */
+@keyframes show-control-fallback {
   0% {
+    display: none;
     opacity: 0;
   }
   100% {
+    display: block;
     opacity: 1;
   }
 }
 
-body {
-  animation: show-content-fallback 0s 0.4s forwards;
+.control-content {
+  animation: show-control-fallback 0s 2.5s forwards;
+}
+
+[data-control-content] {
+  animation: show-control-fallback 0s 2.5s forwards;
 }
