@@ -137,7 +137,7 @@
 
       // Also poll for feature flags
       let attempts = 0;
-      const maxAttempts = Math.floor(750 / 25); // maxWaitTime from old CONFIG
+      const maxAttempts = Math.floor(2000 / 25); // Increased from 750ms to 2000ms
 
       const pollForFlags = () => {
         attempts++;
@@ -321,7 +321,7 @@
     const emergencyTimeout = setTimeout(() => {
       showVariantContent("control");
       setupFormTracking();
-    }, 750); // maxWaitTime from old CONFIG
+    }, 2000); // Increased from 750ms to 2000ms
 
     try {
       // Check if PostHog is available

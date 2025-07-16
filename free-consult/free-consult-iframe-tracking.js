@@ -149,15 +149,19 @@ window.addEventListener("beforeunload", function (e) {
   if (isLikelyFormSubmission && window.posthog) {
 
     // Track the conversion immediately
-    posthog.capture("free_consult_form_conversion", {
-      conversion_type: "form_submission",
-      page_path: window.location.pathname,
-      form_type: "hubspot_redirect",
-      detection_method: "beforeunload_redirect",
-      timestamp: new Date().toISOString(),
-      redirect_expected: true,
-      form_submission_detected: formSubmissionDetected,
-    });
+    try {
+      posthog.capture("free_consult_form_conversion", {
+        conversion_type: "form_submission",
+        page_path: window.location.pathname,
+        form_type: "hubspot_redirect",
+        detection_method: "beforeunload_redirect",
+        timestamp: new Date().toISOString(),
+        redirect_expected: true,
+        form_submission_detected: formSubmissionDetected,
+      });
+    } catch (error) {
+      // Silent error handling
+    }
 
 
 
@@ -185,16 +189,20 @@ if (document.referrer && document.referrer.includes("joinheard.com/free-consult"
 
     // Track this as a successful conversion
     if (window.posthog) {
-      posthog.capture("free_consult_form_conversion", {
-        conversion_type: "form_submission",
-        page_path: "/free-consult",
-        destination_url: window.location.href,
-        referrer: document.referrer,
-        is_hubspot_meeting: true,
-        form_type: "hubspot_meeting_success",
-        detection_method: "referrer_tracking",
-        timestamp: new Date().toISOString(),
-      });
+      try {
+        posthog.capture("free_consult_form_conversion", {
+          conversion_type: "form_submission",
+          page_path: "/free-consult",
+          destination_url: window.location.href,
+          referrer: document.referrer,
+          is_hubspot_meeting: true,
+          form_type: "hubspot_meeting_success",
+          detection_method: "referrer_tracking",
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        // Silent error handling
+      }
 
     }
   }
@@ -202,9 +210,13 @@ if (document.referrer && document.referrer.includes("joinheard.com/free-consult"
 
 // Test PostHog connection immediately
 if (window.posthog) {
-  posthog.capture("test_event_form_tracking", {
-    test: true,
-    timestamp: new Date().toISOString(),
-    page_url: window.location.href,
-  });
+  try {
+    posthog.capture("test_event_form_tracking", {
+      test: true,
+      timestamp: new Date().toISOString(),
+      page_url: window.location.href,
+    });
+  } catch (error) {
+    // Silent error handling
+  }
 }
