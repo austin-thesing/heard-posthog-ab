@@ -8,52 +8,7 @@
 (function () {
   "use strict";
 
-  // Debug window for persistent logging
-  let debugWindow = null;
-  let debugLogs = [];
 
-  function openDebugWindow() {
-    if (!debugWindow || debugWindow.closed) {
-      debugWindow = window.open("", "debug", "width=600,height=400,scrollbars=yes");
-      debugWindow.document.write(`
-        <html>
-          <head><title>A/B Test Debug Log</title></head>
-          <body style="font-family: monospace; padding: 10px; background: #000; color: #0f0;">
-            <h3>A/B Test Debug Log</h3>
-            <div id="logs"></div>
-          </body>
-        </html>
-      `);
-    }
-    return debugWindow;
-  }
-
-  function updateDebugWindow() {
-    if (debugWindow && !debugWindow.closed) {
-      const logsDiv = debugWindow.document.getElementById("logs");
-      if (logsDiv) {
-        logsDiv.innerHTML = debugLogs.map((log) => `<div>${log}</div>`).join("");
-        logsDiv.scrollTop = logsDiv.scrollHeight;
-      }
-    }
-  }
-
-  // Utility functions
-  function log(...args) {
-    const DEBUG = false; // Set to true to enable debug logging
-    if (DEBUG) {
-      const timestamp = new Date().toISOString().split("T")[1].split(".")[0];
-      const message = `[${timestamp}] [A/B Test] ${args.join(" ")}`;
-      console.log(message);
-
-      // Also log to debug window
-      debugLogs.push(message);
-      if (debugLogs.length > 100) debugLogs.shift(); // Keep only last 100 logs
-
-      openDebugWindow();
-      updateDebugWindow();
-    }
-  }
 
   // Hide content initially to prevent flicker
   function hideContentInitially() {
@@ -63,11 +18,9 @@
 
     if (controlDiv) {
       controlDiv.style.setProperty("display", "none", "important");
-      log("Hidden control content div");
     }
     if (testDiv) {
       testDiv.style.setProperty("display", "none", "important");
-      log("Hidden test content div");
     }
 
     // Hide hero text elements with data attributes (set opacity to 0)
@@ -79,8 +32,6 @@
       el.style.setProperty("opacity", "0", "important");
       el.style.transition = "opacity 0.3s ease";
     });
-
-    log('Hidden hero text elements with data attributes and adjacent elements marked with data-hide-until-ready="true"');
   }
 
   function setElementTextFromAttr(el, attr) {
@@ -119,41 +70,30 @@
 
   // Show appropriate content based on variant
   function showVariantContent(variant) {
-    log("Showing content for variant:", variant);
 
     if (variant === "test") {
       // Show test below-the-fold content
       const testDiv = document.querySelector(".test-content");
       if (testDiv) {
         testDiv.style.setProperty("display", "block", "important");
-        log("Showed test content div");
-      } else {
-        log("No .test-content div found");
       }
 
       // Show test hero content
       const testElements = document.querySelectorAll("[data-test-content]");
-      log("Found", testElements.length, "elements with data-test-content");
       testElements.forEach((el) => {
         setElementTextFromAttr(el, "data-test-content");
-        log("Applied test content to element:", el.tagName, el.getAttribute("data-test-content"));
       });
     } else {
       // Show control below-the-fold content (default)
       const controlDiv = document.querySelector(".control-content");
       if (controlDiv) {
         controlDiv.style.setProperty("display", "block", "important");
-        log("Showed control content div");
-      } else {
-        log("No .control-content div found");
       }
 
       // Show control hero content
       const controlElements = document.querySelectorAll("[data-control-content]");
-      log("Found", controlElements.length, "elements with data-control-content");
       controlElements.forEach((el) => {
         setElementTextFromAttr(el, "data-control-content");
-        log("Applied control content to element:", el.tagName, el.getAttribute("data-control-content"));
       });
     }
 
@@ -172,8 +112,6 @@
     document.querySelectorAll('[data-hide-until-ready="true"]').forEach((el) => {
       el.style.setProperty("opacity", "1", "important");
     });
-
-    log("Content visibility update completed for variant:", variant, '- also showed adjacent elements with data-hide-until-ready="true"');
   }
 
   // PostHog initialization with retry logic (REMOVED)
@@ -193,7 +131,6 @@
         if (!callbackFired) {
           callbackFired = true;
           const flagValue = posthog.getFeatureFlag("free-consult-lp2-test");
-          log("Feature flag 'free-consult-lp2-test' loaded via callback:", flagValue);
           resolve(flagValue);
         }
       });
@@ -208,11 +145,9 @@
 
         if (flagValue !== undefined && !callbackFired) {
           callbackFired = true;
-          log("Feature flag 'free-consult-lp2-test' loaded via polling after", attempts * 25, "ms:", flagValue);
           resolve(flagValue);
         } else if (attempts >= maxAttempts && !callbackFired) {
           callbackFired = true;
-          log("Feature flag 'free-consult-lp2-test' timeout after", attempts * 25, "ms");
           reject(new Error("Feature flag timeout"));
         } else if (!callbackFired) {
           setTimeout(pollForFlags, 25);
@@ -254,10 +189,7 @@
           ...context,
         });
 
-        log("✅ Tracked experiment exposure:", variant, context);
-        log("📊 PostHog project key:", window.posthog?.config?.token || "unknown");
       } catch (error) {
-        log("❌ Error tracking exposure:", error.message);
         // Reset flag on error
         window._posthogExposureTracked = false;
       }
@@ -315,10 +247,7 @@
             ...formData,
           });
 
-          log("✅ Tracked conversion for variant:", variant);
-          log("📊 PostHog project key:", window.posthog?.config?.token || "unknown");
         } catch (error) {
-          log("❌ ERROR tracking conversion:", error.message);
         } finally {
           // Clear the flag after a short delay
           setTimeout(() => {
@@ -390,23 +319,18 @@
 
     // Emergency fallback to control after max wait time
     const emergencyTimeout = setTimeout(() => {
-      log("Emergency: Showing control content after", 750, "ms timeout");
       showVariantContent("control");
       setupFormTracking();
     }, 750); // maxWaitTime from old CONFIG
 
     try {
-      log("Starting PostHog A/B test");
-
       // Check if PostHog is available
       if (!window.posthog) {
         throw new Error("PostHog is not available on window.posthog");
       }
-      log("PostHog is available, proceeding with feature flag check");
 
       // Get feature flag value
       const flagValue = await getFeatureFlagValue();
-      log("Feature flag 'free-consult-lp2-test' value:", flagValue);
 
       // Clear emergency timeout since we got the flag value
       clearTimeout(emergencyTimeout);
@@ -414,7 +338,6 @@
       // Determine variant based on feature flag
       // Handle string values "test" and "control"
       const variant = flagValue === "test" ? "test" : "control";
-      log("Determined variant:", variant, "(from flag value:", flagValue + ")");
 
       // Track experiment exposure
       trackExperimentExposure(variant, {
@@ -427,7 +350,6 @@
 
       // Test PostHog connection immediately
       if (window.posthog) {
-        log("✅ PostHog is available, sending test event");
         try {
           posthog.capture("test_event_ab_test", {
             test: true,
@@ -435,20 +357,14 @@
             timestamp: new Date().toISOString(),
             page_url: window.location.href,
           });
-          log("📤 Test event sent to PostHog");
-          log("📊 PostHog project key:", window.posthog?.config?.token || "unknown");
-          log("🔗 PostHog API host:", window.posthog?.config?.api_host || "unknown");
         } catch (error) {
-          log("❌ ERROR sending test event:", error.message);
+          // Silent error handling
         }
-      } else {
-        log("❌ PostHog is NOT available");
       }
 
       // Setup conversion tracking
       setupFormTracking();
     } catch (error) {
-      log("Error running experiment:", error);
 
       // Clear emergency timeout
       clearTimeout(emergencyTimeout);
@@ -465,7 +381,6 @@
 
       // Fallback to control
       // fallbackToControl always true
-      log("Falling back to control variant");
       showVariantContent("control");
       setupFormTracking();
     }
@@ -478,7 +393,6 @@
     runExperiment();
   }
   // --- HubSpot form submission tracking with redirect detection ---
-  log("Setting up form submission tracking with redirect detection");
 
   // Track form submissions and redirects
   let formSubmissionDetected = false;
@@ -495,23 +409,13 @@
       return;
     }
 
-    // Log ALL messages to see what's happening
-    log("🔍 ALL MESSAGE received from:", event.origin);
-    log("🔍 Message data type:", typeof event.data);
-    if (event.data) {
-      log("🔍 Message data:", JSON.stringify(event.data));
-    } else {
-      log("🔍 Message with no data");
-    }
+
 
     // Check if it's HubSpot-related
     const isHubSpotRelated =
       event.origin.includes("hsforms.net") || (event.data && typeof event.data === "object" && (event.data.type === "hsFormCallback" || JSON.stringify(event.data).includes("hubspot") || JSON.stringify(event.data).includes("hsform")));
 
-    if (isHubSpotRelated) {
-      log("🎯 HUBSPOT MESSAGE detected from:", event.origin);
-      log("🎯 HubSpot data:", JSON.stringify(event.data));
-    }
+
 
     // Handle HubSpot form callbacks
     let isHubSpotFormEvent = false;
@@ -519,14 +423,12 @@
 
     // Standard hsFormCallback format
     if (event.data && typeof event.data === "object" && event.data.type === "hsFormCallback") {
-      log("HubSpot form callback detected:", event.data.eventName);
       isHubSpotFormEvent = true;
       eventName = event.data.eventName;
     }
 
     // Direct event name format
     if (event.data && typeof event.data === "object" && event.data.eventName) {
-      log("HubSpot form event detected:", event.data.eventName);
       isHubSpotFormEvent = true;
       eventName = event.data.eventName;
     }
@@ -535,11 +437,9 @@
       // Track form submission events
       if (eventName === "onFormSubmit" || eventName === "onFormSubmitted" || eventName === "onFormReady") {
         formSubmissionDetected = true;
-        log("✅ FORM SUBMISSION DETECTED! Event:", eventName);
 
         if (window.posthog) {
           const variant = posthog.getFeatureFlag && posthog.getFeatureFlag("free-consult-lp2-test");
-          log("Tracking conversion for variant:", variant);
 
           try {
             // Create custom event for form submission
@@ -561,36 +461,24 @@
               page_url: window.location.href,
             });
 
-            log("✅ CONVERSION TRACKED! Event: free_consult_form_conversion");
-            log("📊 PostHog project key:", window.posthog?.config?.token || "unknown");
-            log("🔗 PostHog API host:", window.posthog?.config?.api_host || "unknown");
           } catch (error) {
-            log("❌ ERROR tracking iframe conversion:", error.message);
+            // Silent error handling
           }
-        } else {
-          log("❌ PostHog not available for tracking");
         }
-      } else {
-        log("Other HubSpot event:", eventName, "- not tracking as conversion");
       }
     }
   });
 
-  log("Iframe message listener setup complete");
+
 
   // Simple iframe monitoring for HubSpot forms
   function setupBasicIframeMonitoring() {
-    log("Setting up basic iframe monitoring for HubSpot forms");
-
     const iframes = document.querySelectorAll('iframe[src*="hsforms.net"]');
-    log("Found", iframes.length, "HubSpot form iframes");
 
     iframes.forEach((iframe, index) => {
-      log("HubSpot iframe", index, "detected with src:", iframe.src);
-
-      // Check if redirects are disabled
+      // Check if redirects are disabled - no action needed, just checking
       if (iframe.src.includes("_hsDisableRedirect=true")) {
-        log("✅ Confirmed: HubSpot form has redirects disabled - will track via iframe messages");
+        // Redirects disabled - will track via iframe messages
       }
     });
   }
@@ -600,7 +488,6 @@
 
   // Add URL monitoring to detect redirects
   function setupRedirectDetection() {
-    log("Setting up redirect detection");
 
     let currentUrl = window.location.href;
     let urlCheckCount = 0;
@@ -610,14 +497,9 @@
       urlCheckCount++;
 
       if (window.location.href !== currentUrl) {
-        log("🚀 URL CHANGE DETECTED!");
-        log("Old URL:", currentUrl);
-        log("New URL:", window.location.href);
-
         const isHubSpotMeeting = window.location.href.includes("meetings.hubspot.com");
 
         if (isHubSpotMeeting) {
-          log("🎯 SUCCESS: Redirected to HubSpot meeting page!");
           redirectDetected = true;
 
           // Track the conversion
@@ -640,13 +522,9 @@
                 is_hubspot_meeting: true,
               });
 
-              log("✅ CONVERSION TRACKED via URL change detection");
-              log("📊 Event sent to PostHog project:", window.posthog?.config?.token || "unknown");
             } catch (error) {
-              log("❌ ERROR tracking URL change conversion:", error.message);
+              // Silent error handling
             }
-          } else {
-            log("❌ PostHog not available for URL change tracking");
           }
         }
 
@@ -655,35 +533,25 @@
         return;
       }
 
-      // Log every 50 checks to show it's working
-      if (urlCheckCount % 50 === 0) {
-        log("🔍 URL monitoring active - check #" + urlCheckCount);
-      }
-
       // Stop after 5 minutes to prevent infinite monitoring
       if (urlCheckCount > 3000) {
         clearInterval(urlCheckInterval);
-        log("URL monitoring stopped after 5 minutes");
       }
     }, 100);
 
-    log("URL monitoring started - checking every 100ms");
+
   }
 
   // Add form interaction tracking
   function trackFormInteractions() {
-    log("Setting up form interaction tracking");
 
     // Track clicks anywhere on the page
     document.addEventListener("click", function (e) {
-      // Only log clicks in form areas to reduce noise
+      // Track clicks in form areas
       const formContainer = document.querySelector("#hubspot-form-container, .custom_step_form, .right_step_form");
       if (formContainer && formContainer.contains(e.target)) {
-        log("🎯 CLICK inside form container on:", e.target.tagName, "class:", e.target.className);
-
         // Check for button clicks
         if (e.target.tagName === "BUTTON" || e.target.type === "submit") {
-          log("🔘 FORM BUTTON clicked:", e.target.textContent || e.target.value);
           formSubmissionDetected = true;
         }
       }
@@ -694,18 +562,12 @@
   setTimeout(setupRedirectDetection, 1000);
   setTimeout(trackFormInteractions, 2000);
 
-  log("Simplified tracking setup complete - focusing on iframe message detection");
-
   // Enhanced beforeunload tracking with redirect detection
   window.addEventListener("beforeunload", function (e) {
-    log("🚀 BEFOREUNLOAD: Page is about to redirect");
-    log("Current URL:", window.location.href);
-
     // Check if we're likely redirecting to HubSpot meetings
     const isLikelyFormSubmission = window.location.href.includes("/free-consult");
 
     if (isLikelyFormSubmission && window.posthog) {
-      log("🎯 TRACKING: Form submission redirect detected");
 
       const variant = posthog.getFeatureFlag && posthog.getFeatureFlag("free-consult-lp2-test");
 
@@ -725,10 +587,8 @@
           redirect_expected: true,
         });
 
-        log("✅ CONVERSION TRACKED via beforeunload redirect detection");
-        log("📊 PostHog project key:", window.posthog?.config?.token || "unknown");
       } catch (error) {
-        log("❌ ERROR tracking beforeunload conversion:", error.message);
+        // Silent error handling
       }
 
       // Also use sendBeacon for reliability
@@ -749,12 +609,9 @@
 
         // Send to a generic endpoint (this will likely fail but shows the attempt)
         navigator.sendBeacon("/api/analytics", data);
-        log("📡 Backup tracking sent via sendBeacon");
       }
-    } else {
-      log("Page unload detected but not from form page");
     }
   });
 
-  log("Form tracking setup complete - ready to detect HubSpot iframe form submissions");
+
 })();
