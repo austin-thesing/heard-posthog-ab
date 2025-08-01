@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
+import { join, dirname } from 'path';
+import { transform } from 'esbuild';
 
 const isDev = process.argv.includes('--dev');
+const srcDir = './src';
 const distDir = './dist';
 
 // Ensure dist directory exists
@@ -11,74 +13,114 @@ if (!existsSync(distDir)) {
   mkdirSync(distDir, { recursive: true });
 }
 
-// Minify JavaScript
-function minifyJS(content) {
+// Minify JavaScript using ESBuild
+async function minifyJS(content) {
   if (isDev) return content;
   
-  // Remove debug sections and console logs, then minify
-  let cleaned = content
-    // Remove debug comment blocks (/* debug */ ... /* end debug */)
-    .replace(/\/\* debug \*\/[\s\S]*?\/\* end debug \*\//g, '')
-    .replace(/\/\* DEBUG \*\/[\s\S]*?\/\* END DEBUG \*\//g, '')
-    
-    // Remove debug logic patterns
-    .replace(/if\s*\(\s*CONFIG\.debug\s*\)/g, 'if(false)')
-    .replace(/const\s+DEBUG\s*=\s*true\s*;/g, 'const DEBUG = false;')
-    
-    // Remove all console methods
-    .replace(/console\.(log|warn|info|debug|error|trace|table|group|groupEnd|time|timeEnd)\s*\([^)]*\)\s*;?/g, '')
-    
-    // Remove debug function calls more carefully - only standalone calls
-    .replace(/^\s*debugLog\s*\([^)]*\)\s*;?\s*$/gm, '') // Remove entire lines that only contain debugLog
-    .replace(/\s+debugLog\s*\([^)]*\)\s*;?\s*$/gm, '') // Remove debugLog calls at end of line with leading whitespace
-    .replace(/debugLog\s*\([^)]*\)\s*;?\s*$/gm, '') // Remove debugLog calls at end of line
-    .replace(/\n\s*\n+/g, '\n') // Clean up excessive empty lines after removal
-    
-    // Remove all comments more carefully
-    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
-    .replace(/^(\s*)\/\/.*$/gm, '$1') // Remove single line comments at start of line
-    
-    // Very conservative cleanup: Only remove excessive whitespace
-    .replace(/\n\s*\n+/g, '\n') // Remove excessive empty lines
-    .replace(/^\s+/gm, '') // Remove leading whitespace from each line
-    .replace(/\s+$/gm, '') // Remove trailing whitespace from each line
-    .trim();
-  
-  return cleaned;
-}
-
-// Minify CSS
-function minifyCSS(content) {
-  if (isDev) return content;
-  
-  return content
-    .replace(/\/\*.*?\*\//g, '') // Remove comments
-    .replace(/\s+/g, ' ') // Collapse whitespace
-    .replace(/;\s*}/g, '}') // Remove semicolon before closing brace
-    .replace(/\s*{\s*/g, '{') // Clean up braces
-    .replace(/;\s*/g, ';') // Clean up semicolons
-    .trim();
-}
-
-// Process files
-const files = [
-  { src: 'free-consult/native-split-enhanced.js', dest: 'native-split-enhanced.js', type: 'js' },
-  { src: 'free-consult/free-consult-iframe-tracking.js', dest: 'free-consult-iframe-tracking.js', type: 'js' },
-  { src: 'free-consult/anti-flicker.css', dest: 'anti-flicker.css', type: 'css' }
-];
-
-console.log(`Building ${isDev ? 'development' : 'production'} files...`);
-
-for (const file of files) {
   try {
-    const content = readFileSync(file.src, 'utf8');
-    const processed = file.type === 'js' ? minifyJS(content) : minifyCSS(content);
+    // First, do some custom preprocessing for debug removal
+    let preprocessed = content
+      // Remove debug comment blocks (/* debug */ ... /* end debug */)
+      .replace(/\/\* debug \*\/[\s\S]*?\/\* end debug \*\//g, '')
+      .replace(/\/\* DEBUG \*\/[\s\S]*?\/\* END DEBUG \*\//g, '')
+      
+      // Remove debug logic patterns
+      .replace(/if\s*\(\s*CONFIG\.debug\s*\)/g, 'if(false)')
+      .replace(/const\s+DEBUG\s*=\s*true\s*;/g, 'const DEBUG = false;')
+      
+      // Remove console methods (ESBuild will handle the rest)
+      .replace(/console\.(log|warn|info|debug|error|trace|table|group|groupEnd|time|timeEnd)\s*\([^)]*\)\s*;?/g, '');
+
+    // Use ESBuild for proper minification
+    const result = await transform(preprocessed, {
+      minify: true,
+      target: 'es2017', // Good browser support
+      format: 'iife', // Keep as IIFE
+      keepNames: false, // Allow name mangling for smaller size
+    });
     
-    writeFileSync(join(distDir, file.dest), processed);
-    console.log(`✓ ${file.dest} (${Math.round(processed.length / 1024 * 100) / 100}KB)`);
+    return result.code;
   } catch (error) {
-    console.error(`✗ Failed to process ${file.src}:`, error.message);
+    console.warn(`ESBuild minification failed, falling back to original: ${error.message}`);
+    return content;
   }
 }
 
-console.log('Build complete!');
+// Minify CSS using ESBuild
+async function minifyCSS(content) {
+  if (isDev) return content;
+  
+  try {
+    const result = await transform(content, {
+      loader: 'css',
+      minify: true,
+    });
+    
+    return result.code;
+  } catch (error) {
+    console.warn(`ESBuild CSS minification failed, falling back to simple minification: ${error.message}`);
+    // Fallback to simple CSS minification
+    return content
+      .replace(/\/\*.*?\*\//g, '') // Remove comments
+      .replace(/\s+/g, ' ') // Collapse whitespace
+      .replace(/;\s*}/g, '}') // Remove semicolon before closing brace
+      .replace(/\s*{\s*/g, '{') // Clean up braces
+      .replace(/;\s*/g, ';') // Clean up semicolons
+      .trim();
+  }
+}
+
+// Recursively find all files in src directory
+function findFiles(dir, baseDir = dir) {
+  const files = [];
+  const items = readdirSync(dir);
+  
+  for (const item of items) {
+    const fullPath = join(dir, item);
+    const stat = statSync(fullPath);
+    
+    if (stat.isDirectory()) {
+      files.push(...findFiles(fullPath, baseDir));
+    } else if (item.endsWith('.js') || item.endsWith('.css')) {
+      const relativePath = fullPath.replace(baseDir + '/', '').replace('src/', '');
+      files.push({
+        src: fullPath,
+        dest: relativePath,
+        type: item.endsWith('.js') ? 'js' : 'css'
+      });
+    }
+  }
+  
+  return files;
+}
+
+async function build() {
+  console.log(`Building ${isDev ? 'development' : 'production'} files...`);
+
+  // Find all files in src directory
+  const files = findFiles(srcDir);
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(file.src, 'utf8');
+      const processed = file.type === 'js' ? await minifyJS(content) : await minifyCSS(content);
+      
+      // Ensure destination directory exists
+      const destPath = join(distDir, file.dest);
+      const destDir = dirname(destPath);
+      if (!existsSync(destDir)) {
+        mkdirSync(destDir, { recursive: true });
+      }
+      
+      writeFileSync(destPath, processed);
+      console.log(`✓ ${file.dest} (${Math.round(processed.length / 1024 * 100) / 100}KB)`);
+    } catch (error) {
+      console.error(`✗ Failed to process ${file.src}:`, error.message);
+    }
+  }
+
+  console.log('Build complete!');
+}
+
+// Run the build
+build().catch(console.error);

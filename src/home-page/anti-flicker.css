@@ -1,0 +1,29 @@
+/* Anti-flicker CSS for Homepage Button A/B Test */
+/* This CSS should be placed in the <head> section before any other scripts */
+
+/* Hide buttons with A/B testing attribute initially to prevent flicker */
+[data-ab-button="true"] {
+  opacity: 0 !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Fallback: Show buttons after 2.5s if script fails */
+@keyframes show-button-fallback {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+[data-ab-button="true"] {
+  animation: show-button-fallback 0s 2.5s forwards;
+}
+
+/* Optional: Hide any other elements that should wait for button variant assignment */
+[data-hide-until-button-ready="true"] {
+  opacity: 0 !important;
+  transition: opacity 0.3s ease;
+  animation: show-button-fallback 0s 2.5s forwards;
+}

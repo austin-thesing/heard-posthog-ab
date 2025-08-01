@@ -7,7 +7,8 @@
     "dev": "bun run build.js --dev"
   },
   "devDependencies": {
-    "bun": "^1.0.0"
+    "bun": "^1.0.0",
+    "esbuild": "^0.25.8"
   },
   "type": "module"
 }
