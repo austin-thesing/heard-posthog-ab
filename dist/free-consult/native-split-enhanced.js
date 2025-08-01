@@ -1,1 +1,617 @@
-(()=>{var k=Object.defineProperty;var _=Object.getOwnPropertySymbols;var E=Object.prototype.hasOwnProperty,T=Object.prototype.propertyIsEnumerable;var h=(u,s,i)=>s in u?k(u,s,{enumerable:!0,configurable:!0,writable:!0,value:i}):u[s]=i,f=(u,s)=>{for(var i in s||(s={}))E.call(s,i)&&h(u,i,s[i]);if(_)for(var i of _(s))T.call(s,i)&&h(u,i,s[i]);return u};(function(){"use strict";function u(){const t=document.querySelector(".control-content"),e=document.querySelector(".test-content");t&&t.style.setProperty("display","none","important"),e&&e.style.setProperty("display","none","important");const o=document.querySelectorAll("[data-test-content]"),a=document.querySelectorAll("[data-control-content]"),l=document.querySelectorAll('[data-hide-until-ready="true"]');[...o,...a,...l].forEach(r=>{r.style.setProperty("opacity","0","important"),r.style.transition="opacity 0.3s ease"})}function s(t,e){const o=t.getAttribute(e);if(o!==null){const a=window.getComputedStyle(t).display;if(t.childNodes.length>1||t.childNodes.length===1&&t.childNodes[0].nodeType!==Node.TEXT_NODE){let l=!1;for(let r=0;r<t.childNodes.length;r++)if(t.childNodes[r].nodeType===Node.TEXT_NODE){t.childNodes[r].textContent=o,l=!0;break}l||t.insertBefore(document.createTextNode(o),t.firstChild)}else t.textContent=o;a!=="block"&&t.style.setProperty("display",a,"important")}t.style.setProperty("opacity","1","important")}function i(t){if(t==="test"){const e=document.querySelector(".test-content");e&&e.style.setProperty("display","block","important"),document.querySelectorAll("[data-test-content]").forEach(a=>{s(a,"data-test-content")})}else{const e=document.querySelector(".control-content");e&&e.style.setProperty("display","block","important"),document.querySelectorAll("[data-control-content]").forEach(a=>{s(a,"data-control-content")})}document.querySelectorAll("[data-test-content], [data-control-content]").forEach(e=>{(e.style.opacity==="0"||e.style.opacity==="")&&(!e.getAttribute("data-test-content")&&!e.getAttribute("data-control-content")||e.textContent.trim()==="")&&e.style.setProperty("opacity","1","important")}),document.querySelectorAll('[data-hide-until-ready="true"]').forEach(e=>{e.style.setProperty("opacity","1","important")})}function y(){return new Promise((t,e)=>{if(!window.posthog){e(new Error("PostHog not initialized"));return}let o=!1;posthog.onFeatureFlags(()=>{if(!o){o=!0;const n=posthog.getFeatureFlag("free-consult-lp2-test");t(n)}});let a=0;const l=Math.floor(2e3/25),r=()=>{a++;const n=posthog.getFeatureFlag("free-consult-lp2-test");n!==void 0&&!o?(o=!0,t(n)):a>=l&&!o?(o=!0,e(new Error("Feature flag timeout"))):o||setTimeout(r,25)};setTimeout(r,25)})}function w(t,e={}){if(window.posthog&&!window._posthogExposureTracked){window._posthogExposureTracked=!0;try{posthog.capture("$feature_flag_called",{$feature_flag:"free-consult-lp2-test",$feature_flag_response:t,$feature_flag_payload:f({experiment_key:"free-consult-ab-test",variant:t,version:"1.0"},e)}),posthog.capture("experiment_exposure",f({experiment_key:"free-consult-ab-test",variant:t,page_path:window.location.pathname,feature_flag:"free-consult-lp2-test",experiment_version:"1.0",exposure_type:e.exposure_type||"standard"},e))}catch(o){window._posthogExposureTracked=!1}}}function d(){let t=null,e=null;function o(){return t===null&&window.posthog&&(e=posthog.getFeatureFlag("free-consult-lp2-test"),t=e==="test"?"test":"control"),{variant:t,flagValue:e}}function a(r={}){if(window.posthog){const{variant:n,flagValue:c}=o();if(window._posthogTrackingInProgress)return;window._posthogTrackingInProgress=!0;try{posthog.capture("goal_completed",f({goal_key:"form_submission",experiment_key:"free-consult-ab-test",variant:n,feature_flag:"free-consult-lp2-test",feature_flag_value:c,experiment_version:"1.0",page_path:window.location.pathname},r)),posthog.capture("conversion",f({experiment_key:"free-consult-ab-test",variant:n,conversion_type:"form_submission",page_path:window.location.pathname,feature_flag:"free-consult-lp2-test",feature_flag_value:c,experiment_version:"1.0"},r))}catch(p){}finally{setTimeout(()=>{window._posthogTrackingInProgress=!1},100)}}}document.addEventListener("submit",function(r){const n=r.target;n&&n.tagName==="FORM"&&a({form_id:n.id||"unknown",form_class:n.className||"unknown"})}),window.hbspt&&(window.hbspt.forms.create=function(r){return function(n){if(n.onFormSubmit){const c=n.onFormSubmit;n.onFormSubmit=function(p){return a({form_id:n.formId||"unknown",form_type:"hubspot"}),c.apply(this,arguments)}}else n.onFormSubmit=function(c){a({form_id:n.formId||"unknown",form_type:"hubspot"})};return r.call(this,n)}}(window.hbspt.forms.create)),new MutationObserver(function(r){r.forEach(function(n){n.addedNodes.forEach(function(c){c.nodeType===1&&(c.querySelectorAll?c.querySelectorAll("form, .hs-form"):[]).forEach(function(x){x.addEventListener("submit",function(){a({form_loaded:"dynamic"})})})})})}).observe(document.body,{childList:!0,subtree:!0})}async function m(){u();const t=setTimeout(()=>{i("control"),d()},2e3);try{if(!window.posthog)throw new Error("PostHog is not available on window.posthog");const e=await y();clearTimeout(t);const o=e==="test"?"test":"control";if(w(o,{exposure_type:"page_view",page_path:window.location.pathname}),i(o),window.posthog)try{posthog.capture("test_event_ab_test",{test:!0,variant:o,timestamp:new Date().toISOString(),page_url:window.location.href})}catch(a){}d()}catch(e){clearTimeout(t),window.posthog&&posthog.capture("experiment_error",{experiment_key:"free-consult-ab-test",error:e.message,page_path:window.location.pathname,error_type:"initialization_error"}),i("control"),d()}}document.readyState==="loading"?document.addEventListener("DOMContentLoaded",m):m();let g=!1,b=!1;window.addEventListener("message",function(t){const e=t.origin.includes("react-devtools")||t.data&&typeof t.data=="object"&&t.data.source==="react-devtools",o=t.origin.includes("extension://")||t.origin.includes("chrome-extension://"),a=t.data&&typeof t.data=="object"&&(t.data.type==="inspector"||JSON.stringify(t.data).includes("inspector"));if(e||o||a)return;const l=t.origin.includes("hsforms.net")||t.data&&typeof t.data=="object"&&(t.data.type==="hsFormCallback"||JSON.stringify(t.data).includes("hubspot")||JSON.stringify(t.data).includes("hsform"));let r=!1,n=null;if(t.data&&typeof t.data=="object"&&t.data.type==="hsFormCallback"&&(r=!0,n=t.data.eventName),t.data&&typeof t.data=="object"&&t.data.eventName&&(r=!0,n=t.data.eventName),r&&(n==="onFormSubmit"||n==="onFormSubmitted"||n==="onFormReady")&&(g=!0,window.posthog)){const c=posthog.getFeatureFlag&&posthog.getFeatureFlag("free-consult-lp2-test");try{posthog.capture("free_consult_form_conversion",{experiment_key:"free-consult-ab-test",variant:c,conversion_type:"form_submission",page_path:window.location.pathname,feature_flag:"free-consult-lp2-test",feature_flag_value:c,experiment_version:"1.0",form_id:t.data.id||t.data.formId||"002af025-1d67-4e7f-b2bf-2d221f555805",form_type:"hubspot_iframe_no_redirect",event_name:n,hubspot_portal_id:"7507639",redirect_disabled:!0,timestamp:new Date().toISOString(),user_agent:navigator.userAgent,page_url:window.location.href})}catch(p){}}});function v(){document.querySelectorAll('iframe[src*="hsforms.net"]').forEach((e,o)=>{e.src.includes("_hsDisableRedirect=true")})}setTimeout(v,1e3);function S(){let t=window.location.href,e=0;const o=setInterval(()=>{if(e++,window.location.href!==t){if(window.location.href.includes("meetings.hubspot.com")&&(b=!0,window.posthog)){const l=posthog.getFeatureFlag&&posthog.getFeatureFlag("free-consult-lp2-test");try{posthog.capture("free_consult_form_conversion",{experiment_key:"free-consult-ab-test",variant:l,conversion_type:"form_submission",page_path:"/free-consult",redirect_url:window.location.href,feature_flag:"free-consult-lp2-test",feature_flag_value:l,experiment_version:"1.0",form_type:"hubspot_meeting_redirect",detection_method:"url_change_monitoring",timestamp:new Date().toISOString(),is_hubspot_meeting:!0})}catch(r){}}clearInterval(o);return}e>3e3&&clearInterval(o)},100)}function F(){document.addEventListener("click",function(t){const e=document.querySelector("#hubspot-form-container, .custom_step_form, .right_step_form");e&&e.contains(t.target)&&(t.target.tagName==="BUTTON"||t.target.type==="submit")&&(g=!0)})}setTimeout(S,1e3),setTimeout(F,2e3),window.addEventListener("beforeunload",function(t){if(window.location.href.includes("/free-consult")&&window.posthog){const o=posthog.getFeatureFlag&&posthog.getFeatureFlag("free-consult-lp2-test");try{posthog.capture("free_consult_form_conversion",{experiment_key:"free-consult-ab-test",variant:o,conversion_type:"form_submission",page_path:window.location.pathname,feature_flag:"free-consult-lp2-test",feature_flag_value:o,experiment_version:"1.0",form_type:"hubspot_redirect",detection_method:"beforeunload_redirect",timestamp:new Date().toISOString(),redirect_expected:!0})}catch(a){}if(navigator.sendBeacon){const a=JSON.stringify({event:"free_consult_form_conversion_beacon",properties:{experiment_key:"free-consult-ab-test",variant:o,conversion_type:"form_submission",page_path:window.location.pathname,feature_flag:"free-consult-lp2-test",feature_flag_value:o,detection_method:"sendBeacon",timestamp:new Date().toISOString()}});navigator.sendBeacon("/api/analytics",a)}}})})();})();
+/**
+ * PostHog A/B Test Script for Webflow - Dual Content Version
+ * Uses control-content/test-content divs and data attributes for hero text
+ * Supports data-hide-until-ready="true" for adjacent elements that should be hidden until content loads
+ * Defaults to control variant on any failure
+ */
+
+(function () {
+  "use strict";
+
+
+
+  // Hide content initially to prevent flicker
+  function hideContentInitially() {
+    // Hide below-the-fold content divs
+    const controlDiv = document.querySelector(".control-content");
+    const testDiv = document.querySelector(".test-content");
+
+    if (controlDiv) {
+      controlDiv.style.setProperty("display", "none", "important");
+    }
+    if (testDiv) {
+      testDiv.style.setProperty("display", "none", "important");
+    }
+
+    // Hide hero text elements with data attributes (set opacity to 0)
+    const elementsWithTestContent = document.querySelectorAll("[data-test-content]");
+    const elementsWithControlContent = document.querySelectorAll("[data-control-content]");
+    const elementsWithHideUntilReady = document.querySelectorAll('[data-hide-until-ready="true"]');
+
+    [...elementsWithTestContent, ...elementsWithControlContent, ...elementsWithHideUntilReady].forEach((el) => {
+      el.style.setProperty("opacity", "0", "important");
+      el.style.transition = "opacity 0.3s ease";
+    });
+  }
+
+  function setElementTextFromAttr(el, attr) {
+    const newText = el.getAttribute(attr);
+    if (newText !== null) {
+      // Store original display style before making changes
+      const originalDisplay = window.getComputedStyle(el).display;
+
+      if (el.childNodes.length > 1 || (el.childNodes.length === 1 && el.childNodes[0].nodeType !== Node.TEXT_NODE)) {
+        // Update only the first text node, preserve children (e.g., h1 with span)
+        let foundTextNode = false;
+        for (let i = 0; i < el.childNodes.length; i++) {
+          if (el.childNodes[i].nodeType === Node.TEXT_NODE) {
+            el.childNodes[i].textContent = newText;
+            foundTextNode = true;
+            break;
+          }
+        }
+        if (!foundTextNode) {
+          // If no text node exists, insert one at the start
+          el.insertBefore(document.createTextNode(newText), el.firstChild);
+        }
+      } else {
+        // Leaf node, just set textContent
+        el.textContent = newText;
+      }
+
+      // Preserve the original display style to prevent layout shifts
+      if (originalDisplay !== "block") {
+        el.style.setProperty("display", originalDisplay, "important");
+      }
+    }
+    // Always set opacity to 1 to override anti-flicker.css
+    el.style.setProperty("opacity", "1", "important");
+  }
+
+  // Show appropriate content based on variant
+  function showVariantContent(variant) {
+
+    if (variant === "test") {
+      // Show test below-the-fold content
+      const testDiv = document.querySelector(".test-content");
+      if (testDiv) {
+        testDiv.style.setProperty("display", "block", "important");
+      }
+
+      // Show test hero content
+      const testElements = document.querySelectorAll("[data-test-content]");
+      testElements.forEach((el) => {
+        setElementTextFromAttr(el, "data-test-content");
+      });
+    } else {
+      // Show control below-the-fold content (default)
+      const controlDiv = document.querySelector(".control-content");
+      if (controlDiv) {
+        controlDiv.style.setProperty("display", "block", "important");
+      }
+
+      // Show control hero content
+      const controlElements = document.querySelectorAll("[data-control-content]");
+      controlElements.forEach((el) => {
+        setElementTextFromAttr(el, "data-control-content");
+      });
+    }
+
+    // Show any elements that don't have content but were hidden
+    document.querySelectorAll("[data-test-content], [data-control-content]").forEach((el) => {
+      if (el.style.opacity === "0" || el.style.opacity === "") {
+        if (!el.getAttribute("data-test-content") && !el.getAttribute("data-control-content")) {
+          el.style.setProperty("opacity", "1", "important");
+        } else if (el.textContent.trim() === "") {
+          el.style.setProperty("opacity", "1", "important");
+        }
+      }
+    });
+
+    // Show elements marked with data-hide-until-ready="true"
+    document.querySelectorAll('[data-hide-until-ready="true"]').forEach((el) => {
+      el.style.setProperty("opacity", "1", "important");
+    });
+  }
+
+  // PostHog initialization with retry logic (REMOVED)
+  // function initializePostHogWithRetry ... (REMOVED)
+
+  // Get feature flag value from PostHog
+  function getFeatureFlagValue() {
+    return new Promise((resolve, reject) => {
+      if (!window.posthog) {
+        reject(new Error("PostHog not initialized"));
+        return;
+      }
+
+      // Register callback for feature flags
+      let callbackFired = false;
+      posthog.onFeatureFlags(() => {
+        if (!callbackFired) {
+          callbackFired = true;
+          const flagValue = posthog.getFeatureFlag("free-consult-lp2-test");
+          resolve(flagValue);
+        }
+      });
+
+      // Also poll for feature flags
+      let attempts = 0;
+      const maxAttempts = Math.floor(2000 / 25); // Increased from 750ms to 2000ms
+
+      const pollForFlags = () => {
+        attempts++;
+        const flagValue = posthog.getFeatureFlag("free-consult-lp2-test");
+
+        if (flagValue !== undefined && !callbackFired) {
+          callbackFired = true;
+          resolve(flagValue);
+        } else if (attempts >= maxAttempts && !callbackFired) {
+          callbackFired = true;
+          reject(new Error("Feature flag timeout"));
+        } else if (!callbackFired) {
+          setTimeout(pollForFlags, 25);
+        }
+      };
+
+      // Start polling
+      setTimeout(pollForFlags, 25);
+    });
+  }
+
+  // Track experiment exposure
+  function trackExperimentExposure(variant, context = {}) {
+    if (window.posthog && !window._posthogExposureTracked) {
+      // Prevent duplicate exposure tracking
+      window._posthogExposureTracked = true;
+
+      try {
+        // Use PostHog's native experiment tracking
+        posthog.capture("$feature_flag_called", {
+          $feature_flag: "free-consult-lp2-test",
+          $feature_flag_response: variant,
+          $feature_flag_payload: {
+            experiment_key: "free-consult-ab-test",
+            variant: variant,
+            version: "1.0",
+            ...context,
+          },
+        });
+
+        // Also track custom event for additional analysis
+        posthog.capture("experiment_exposure", {
+          experiment_key: "free-consult-ab-test",
+          variant: variant,
+          page_path: window.location.pathname,
+          feature_flag: "free-consult-lp2-test",
+          experiment_version: "1.0",
+          exposure_type: context.exposure_type || "standard",
+          ...context,
+        });
+
+      } catch (error) {
+        // Reset flag on error
+        window._posthogExposureTracked = false;
+      }
+    }
+  }
+
+  // Setup form conversion tracking
+  function setupFormTracking() {
+    // Store variant to avoid repeated PostHog calls during tracking
+    let cachedVariant = null;
+    let cachedFlagValue = null;
+
+    // Get variant once and cache it
+    function getCachedVariant() {
+      if (cachedVariant === null && window.posthog) {
+        cachedFlagValue = posthog.getFeatureFlag("free-consult-lp2-test");
+        cachedVariant = cachedFlagValue === "test" ? "test" : "control";
+      }
+      return { variant: cachedVariant, flagValue: cachedFlagValue };
+    }
+
+    // Track form submissions as conversions
+    function trackConversion(formData = {}) {
+      if (window.posthog) {
+        const { variant, flagValue } = getCachedVariant();
+
+        // Prevent recursive calls by checking if we're already tracking
+        if (window._posthogTrackingInProgress) {
+          return;
+        }
+        window._posthogTrackingInProgress = true;
+
+        try {
+          // Track as PostHog goal
+          posthog.capture("goal_completed", {
+            goal_key: "form_submission",
+            experiment_key: "free-consult-ab-test",
+            variant: variant,
+            feature_flag: "free-consult-lp2-test",
+            feature_flag_value: flagValue,
+            experiment_version: "1.0",
+            page_path: window.location.pathname,
+            ...formData,
+          });
+
+          // Also track standard conversion event
+          posthog.capture("conversion", {
+            experiment_key: "free-consult-ab-test",
+            variant: variant,
+            conversion_type: "form_submission",
+            page_path: window.location.pathname,
+            feature_flag: "free-consult-lp2-test",
+            feature_flag_value: flagValue,
+            experiment_version: "1.0",
+            ...formData,
+          });
+
+        } catch (error) {
+        } finally {
+          // Clear the flag after a short delay
+          setTimeout(() => {
+            window._posthogTrackingInProgress = false;
+          }, 100);
+        }
+      }
+    }
+
+    // Listen for form submissions
+    document.addEventListener("submit", function (e) {
+      const form = e.target;
+      if (form && form.tagName === "FORM") {
+        trackConversion({
+          form_id: form.id || "unknown",
+          form_class: form.className || "unknown",
+        });
+      }
+    });
+
+    // HubSpot form tracking if available
+    if (window.hbspt) {
+      window.hbspt.forms.create = (function (originalCreate) {
+        return function (options) {
+          // Wrap onFormSubmit
+          if (options.onFormSubmit) {
+            const originalOnSubmit = options.onFormSubmit;
+            options.onFormSubmit = function ($form) {
+              trackConversion({ form_id: options.formId || "unknown", form_type: "hubspot" });
+              return originalOnSubmit.apply(this, arguments);
+            };
+          } else {
+            options.onFormSubmit = function ($form) {
+              trackConversion({ form_id: options.formId || "unknown", form_type: "hubspot" });
+            };
+          }
+
+          return originalCreate.call(this, options);
+        };
+      })(window.hbspt.forms.create);
+    }
+
+    // MutationObserver for dynamically loaded forms
+    const observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) {
+            const forms = node.querySelectorAll ? node.querySelectorAll("form, .hs-form") : [];
+            forms.forEach(function (form) {
+              form.addEventListener("submit", function () {
+                trackConversion({ form_loaded: "dynamic" });
+              });
+            });
+          }
+        });
+      });
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  // Main experiment execution
+  async function runExperiment() {
+    // Hide content initially to prevent flicker
+    hideContentInitially();
+
+    // Emergency fallback to control after max wait time
+    const emergencyTimeout = setTimeout(() => {
+      showVariantContent("control");
+      setupFormTracking();
+    }, 2000); // Increased from 750ms to 2000ms
+
+    try {
+      // Check if PostHog is available
+      if (!window.posthog) {
+        throw new Error("PostHog is not available on window.posthog");
+      }
+
+      // Get feature flag value
+      const flagValue = await getFeatureFlagValue();
+
+      // Clear emergency timeout since we got the flag value
+      clearTimeout(emergencyTimeout);
+
+      // Determine variant based on feature flag
+      // Handle string values "test" and "control"
+      const variant = flagValue === "test" ? "test" : "control";
+
+      // Track experiment exposure
+      trackExperimentExposure(variant, {
+        exposure_type: "page_view",
+        page_path: window.location.pathname,
+      });
+
+      // Show appropriate content
+      showVariantContent(variant);
+
+      // Test PostHog connection immediately
+      if (window.posthog) {
+        try {
+          posthog.capture("test_event_ab_test", {
+            test: true,
+            variant: variant,
+            timestamp: new Date().toISOString(),
+            page_url: window.location.href,
+          });
+        } catch (error) {
+          // Silent error handling
+        }
+      }
+
+      // Setup conversion tracking
+      setupFormTracking();
+    } catch (error) {
+
+      // Clear emergency timeout
+      clearTimeout(emergencyTimeout);
+
+      // Track error
+      if (window.posthog) {
+        posthog.capture("experiment_error", {
+          experiment_key: "free-consult-ab-test",
+          error: error.message,
+          page_path: window.location.pathname,
+          error_type: "initialization_error",
+        });
+      }
+
+      // Fallback to control
+      // fallbackToControl always true
+      showVariantContent("control");
+      setupFormTracking();
+    }
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", runExperiment);
+  } else {
+    runExperiment();
+  }
+  // --- HubSpot form submission tracking with redirect detection ---
+
+  // Track form submissions and redirects
+  let formSubmissionDetected = false;
+  let redirectDetected = false;
+
+  window.addEventListener("message", function (event) {
+    // Filter out React dev tools and other noise
+    const isReactDevTools = event.origin.includes("react-devtools") || (event.data && typeof event.data === "object" && event.data.source === "react-devtools");
+    const isExtension = event.origin.includes("extension://") || event.origin.includes("chrome-extension://");
+    const isInspector = event.data && typeof event.data === "object" && (event.data.type === "inspector" || JSON.stringify(event.data).includes("inspector"));
+
+    // Skip logging noise
+    if (isReactDevTools || isExtension || isInspector) {
+      return;
+    }
+
+
+
+    // Check if it's HubSpot-related
+    const isHubSpotRelated =
+      event.origin.includes("hsforms.net") || (event.data && typeof event.data === "object" && (event.data.type === "hsFormCallback" || JSON.stringify(event.data).includes("hubspot") || JSON.stringify(event.data).includes("hsform")));
+
+
+
+    // Handle HubSpot form callbacks
+    let isHubSpotFormEvent = false;
+    let eventName = null;
+
+    // Standard hsFormCallback format
+    if (event.data && typeof event.data === "object" && event.data.type === "hsFormCallback") {
+      isHubSpotFormEvent = true;
+      eventName = event.data.eventName;
+    }
+
+    // Direct event name format
+    if (event.data && typeof event.data === "object" && event.data.eventName) {
+      isHubSpotFormEvent = true;
+      eventName = event.data.eventName;
+    }
+
+    if (isHubSpotFormEvent) {
+      // Track form submission events
+      if (eventName === "onFormSubmit" || eventName === "onFormSubmitted" || eventName === "onFormReady") {
+        formSubmissionDetected = true;
+
+        if (window.posthog) {
+          const variant = posthog.getFeatureFlag && posthog.getFeatureFlag("free-consult-lp2-test");
+
+          try {
+            // Create custom event for form submission
+            posthog.capture("free_consult_form_conversion", {
+              experiment_key: "free-consult-ab-test",
+              variant: variant,
+              conversion_type: "form_submission",
+              page_path: window.location.pathname,
+              feature_flag: "free-consult-lp2-test",
+              feature_flag_value: variant,
+              experiment_version: "1.0",
+              form_id: event.data.id || event.data.formId || "002af025-1d67-4e7f-b2bf-2d221f555805",
+              form_type: "hubspot_iframe_no_redirect",
+              event_name: eventName,
+              hubspot_portal_id: "7507639",
+              redirect_disabled: true,
+              timestamp: new Date().toISOString(),
+              user_agent: navigator.userAgent,
+              page_url: window.location.href,
+            });
+
+          } catch (error) {
+            // Silent error handling
+          }
+        }
+      }
+    }
+  });
+
+
+
+  // Simple iframe monitoring for HubSpot forms
+  function setupBasicIframeMonitoring() {
+    const iframes = document.querySelectorAll('iframe[src*="hsforms.net"]');
+
+    iframes.forEach((iframe, index) => {
+      // Check if redirects are disabled - no action needed, just checking
+      if (iframe.src.includes("_hsDisableRedirect=true")) {
+        // Redirects disabled - will track via iframe messages
+      }
+    });
+  }
+
+  // Set up basic monitoring
+  setTimeout(setupBasicIframeMonitoring, 1000);
+
+  // Add URL monitoring to detect redirects
+  function setupRedirectDetection() {
+
+    let currentUrl = window.location.href;
+    let urlCheckCount = 0;
+
+    // Check for URL changes every 100ms
+    const urlCheckInterval = setInterval(() => {
+      urlCheckCount++;
+
+      if (window.location.href !== currentUrl) {
+        const isHubSpotMeeting = window.location.href.includes("meetings.hubspot.com");
+
+        if (isHubSpotMeeting) {
+          redirectDetected = true;
+
+          // Track the conversion
+          if (window.posthog) {
+            const variant = posthog.getFeatureFlag && posthog.getFeatureFlag("free-consult-lp2-test");
+
+            try {
+              posthog.capture("free_consult_form_conversion", {
+                experiment_key: "free-consult-ab-test",
+                variant: variant,
+                conversion_type: "form_submission",
+                page_path: "/free-consult",
+                redirect_url: window.location.href,
+                feature_flag: "free-consult-lp2-test",
+                feature_flag_value: variant,
+                experiment_version: "1.0",
+                form_type: "hubspot_meeting_redirect",
+                detection_method: "url_change_monitoring",
+                timestamp: new Date().toISOString(),
+                is_hubspot_meeting: true,
+              });
+
+            } catch (error) {
+              // Silent error handling
+            }
+          }
+        }
+
+        // Stop monitoring after redirect
+        clearInterval(urlCheckInterval);
+        return;
+      }
+
+      // Stop after 5 minutes to prevent infinite monitoring
+      if (urlCheckCount > 3000) {
+        clearInterval(urlCheckInterval);
+      }
+    }, 100);
+
+
+  }
+
+  // Add form interaction tracking
+  function trackFormInteractions() {
+
+    // Track clicks anywhere on the page
+    document.addEventListener("click", function (e) {
+      // Track clicks in form areas
+      const formContainer = document.querySelector("#hubspot-form-container, .custom_step_form, .right_step_form");
+      if (formContainer && formContainer.contains(e.target)) {
+        // Check for button clicks
+        if (e.target.tagName === "BUTTON" || e.target.type === "submit") {
+          formSubmissionDetected = true;
+        }
+      }
+    });
+  }
+
+  // Set up both tracking methods
+  setTimeout(setupRedirectDetection, 1000);
+  setTimeout(trackFormInteractions, 2000);
+
+  // Enhanced beforeunload tracking with redirect detection
+  window.addEventListener("beforeunload", function (e) {
+    // Check if we're likely redirecting to HubSpot meetings
+    const isLikelyFormSubmission = window.location.href.includes("/free-consult");
+
+    if (isLikelyFormSubmission && window.posthog) {
+
+      const variant = posthog.getFeatureFlag && posthog.getFeatureFlag("free-consult-lp2-test");
+
+      try {
+        // Track the conversion immediately
+        posthog.capture("free_consult_form_conversion", {
+          experiment_key: "free-consult-ab-test",
+          variant: variant,
+          conversion_type: "form_submission",
+          page_path: window.location.pathname,
+          feature_flag: "free-consult-lp2-test",
+          feature_flag_value: variant,
+          experiment_version: "1.0",
+          form_type: "hubspot_redirect",
+          detection_method: "beforeunload_redirect",
+          timestamp: new Date().toISOString(),
+          redirect_expected: true,
+        });
+
+      } catch (error) {
+        // Silent error handling
+      }
+
+      // Also use sendBeacon for reliability
+      if (navigator.sendBeacon) {
+        const data = JSON.stringify({
+          event: "free_consult_form_conversion_beacon",
+          properties: {
+            experiment_key: "free-consult-ab-test",
+            variant: variant,
+            conversion_type: "form_submission",
+            page_path: window.location.pathname,
+            feature_flag: "free-consult-lp2-test",
+            feature_flag_value: variant,
+            detection_method: "sendBeacon",
+            timestamp: new Date().toISOString(),
+          },
+        });
+
+        // Send to a generic endpoint (this will likely fail but shows the attempt)
+        navigator.sendBeacon("/api/analytics", data);
+      }
+    }
+  });
+
+
+})();

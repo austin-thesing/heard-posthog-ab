@@ -1,1 +1,59 @@
-[data-ab-button=true]{opacity:0!important;transition:opacity .3s ease}@keyframes show-button-fallback{0%{opacity:0}to{opacity:1}}[data-ab-button=true]{animation:show-button-fallback 0s 2.5s forwards}[data-ab-button=true][data-current-variant=test]:hover{transform:translateY(-2px);transition:all .2s ease}[data-ab-button=true][data-current-variant=control]:hover{opacity:.9;transition:all .2s ease}[data-ab-button=true][data-loading=true]{pointer-events:none;opacity:.5!important}[data-ab-button=true][data-loading=true]:after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid currentColor;border-radius:50%;border-top-color:transparent;animation:button-spin 1s linear infinite}@keyframes button-spin{to{transform:rotate(360deg)}}
+/* Flexible Button A/B Testing CSS */
+/* Alternative to inline CSS injection - use this if you prefer external CSS */
+
+/* Hide buttons with flexible A/B testing initially */
+[data-ab-button="true"] {
+  opacity: 0 !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Fallback: Show buttons after 2.5s if script fails */
+@keyframes show-button-fallback {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+[data-ab-button="true"] {
+  animation: show-button-fallback 0s 2.5s forwards;
+}
+
+/* Hover states that respect variants */
+[data-ab-button="true"][data-current-variant="test"]:hover {
+  /* Test variant hover styles */
+  transform: translateY(-2px);
+  transition: all 0.2s ease;
+}
+
+[data-ab-button="true"][data-current-variant="control"]:hover {
+  /* Control variant hover styles */
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+/* Loading state for buttons during variant assignment */
+[data-ab-button="true"][data-loading="true"] {
+  pointer-events: none;
+  opacity: 0.5 !important;
+}
+
+[data-ab-button="true"][data-loading="true"]::after {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 8px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: button-spin 1s linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

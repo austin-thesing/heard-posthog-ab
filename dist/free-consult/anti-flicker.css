@@ -1,1 +1,37 @@
-.control-content,.test-content{display:none!important}[data-control-content],[data-test-content],[data-hide-until-ready=true]{opacity:0!important;transition:opacity .3s ease}@keyframes show-control-fallback{0%{display:none;opacity:0}to{display:block;opacity:1}}.control-content,[data-control-content],[data-hide-until-ready=true]{animation:show-control-fallback 0s 2.5s forwards}
+/* Anti-flicker CSS for PostHog A/B Test - Dual Content Version */
+/* This CSS should be placed in the <head> section before any other scripts */
+
+/* Hide content divs initially to prevent flicker */
+.control-content,
+.test-content {
+  display: none !important;
+}
+
+/* Hide hero text elements with data attributes initially */
+[data-control-content],
+[data-test-content],
+[data-hide-until-ready="true"] {
+  opacity: 0 !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Fallback: Show control content after 2.5s if script fails */
+@keyframes show-control-fallback {
+  0% {
+    display: none;
+    opacity: 0;
+  }
+  100% {
+    display: block;
+    opacity: 1;
+  }
+}
+
+.control-content {
+  animation: show-control-fallback 0s 2.5s forwards;
+}
+
+[data-control-content],
+[data-hide-until-ready="true"] {
+  animation: show-control-fallback 0s 2.5s forwards;
+}
