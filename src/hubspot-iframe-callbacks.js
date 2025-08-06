@@ -16,12 +16,35 @@ const TRACKING_CONFIG = {
 };
 
 // --- Simplified HubSpot form submission tracking ---
-// Focuses ONLY on the reliable onFormSubmitted event that fires after validation
+// Immediately log that script is loaded
+console.log("🚀 HubSpot tracking script LOADED at:", new Date().toISOString());
+console.log("📍 Current page:", window.location.href);
+
+// Count messages to see if ANY are coming through
+let totalMessages = 0;
+let hubspotMessages = 0;
 
 window.addEventListener("message", function (event) {
-  // Debug logging to see all messages (disable in production)
-  if (DEBUG_ENABLED) {
-    console.log("Message received:", event.data);
+  totalMessages++;
+  
+  // Log first 10 messages regardless of source to see what's happening
+  if (totalMessages <= 10) {
+    console.log(`📨 Message #${totalMessages}:`, {
+      origin: event.origin,
+      data: event.data
+    });
+  }
+  
+  // Check for HubSpot patterns in various formats
+  if (event.data && typeof event.data === "object") {
+    const dataStr = JSON.stringify(event.data);
+    if (dataStr.includes("hsForm") || 
+        dataStr.includes("hubspot") || 
+        event.data.type === "hsFormCallback" ||
+        event.data.eventName) {
+      hubspotMessages++;
+      console.log(`🎯 HubSpot-related message #${hubspotMessages}:`, event.data);
+    }
   }
 
   // Only handle HubSpot form callback events
@@ -135,13 +158,17 @@ if (document.referrer && document.referrer.includes("joinheard.com")) {
   }
 }
 
-// Test tracking setup on page load (only in debug mode)
-if (DEBUG_ENABLED && window.posthog) {
-  posthog.capture("hubspot_form_tracking_initialized", {
-    page_url: window.location.href,
-    tracking_version: "simplified_v2"
-  });
-  console.log("HubSpot form tracking initialized - listening for onFormSubmitted events");
+// Test tracking setup on page load
+if (DEBUG_ENABLED) {
+  console.log("✅ Tracking initialized - listening for messages");
+  console.log("📊 PostHog available:", !!window.posthog);
+  console.log("📊 Facebook Pixel available:", typeof fbq !== "undefined");
+  console.log("📊 Reddit Pixel available:", typeof rdt !== "undefined");
+  
+  // Log message count every 5 seconds to see if we're getting ANY messages
+  setInterval(() => {
+    console.log(`📊 Status: ${totalMessages} total messages, ${hubspotMessages} HubSpot messages`);
+  }, 5000);
 }
 
 // Utility function to customize tracking for specific pages
@@ -151,3 +178,61 @@ window.customizeHubSpotTracking = function (config) {
     console.log("Tracking config updated:", TRACKING_CONFIG);
   }
 };
+
+// FALLBACK: Also try the global HubSpot callback if available
+// This works when forms are NOT in iframes
+if (typeof window.hbspt !== "undefined" && window.hbspt) {
+  console.log("🔍 HubSpot global object detected, attempting to hook into forms");
+  
+  // Wait for forms object to be available
+  const setupFormHook = () => {
+    if (window.hbspt.forms && window.hbspt.forms.create) {
+      const originalCreate = window.hbspt.forms.create;
+      
+      window.hbspt.forms.create = function(config) {
+        console.log("📝 HubSpot form being created with config:", config);
+        
+        // Add our callback to the config
+        const originalCallback = config.onFormSubmitted;
+        config.onFormSubmitted = function(data) {
+          console.log("🎉 Form submitted via global callback!", data);
+          
+          // Fire tracking pixels
+          if (typeof fbq !== "undefined") {
+            fbq("track", "Lead");
+            console.log("✅ Facebook Lead event fired");
+          }
+          
+          if (window.posthog) {
+            posthog.capture(TRACKING_CONFIG.posthogEventName, {
+              form_id: config.formId || "unknown",
+              method: "global_callback"
+            });
+            console.log("✅ PostHog event fired");
+          }
+          
+          if (typeof rdt !== "undefined") {
+            rdt("track", "Lead");
+            console.log("✅ Reddit Lead event fired");
+          }
+          
+          // Call original callback if it existed
+          if (originalCallback) {
+            originalCallback.call(this, data);
+          }
+        };
+        
+        // Call original create function
+        return originalCreate.call(this, config);
+      };
+      console.log("✅ Successfully hooked into HubSpot forms.create");
+    } else {
+      console.log("⏳ Waiting for HubSpot forms object...");
+      setTimeout(setupFormHook, 500);
+    }
+  };
+  
+  setupFormHook();
+} else {
+  console.log("⚠️ HubSpot global object not found - relying on postMessage only");
+}
