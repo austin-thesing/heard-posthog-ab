@@ -112,7 +112,49 @@
   function setupFormMonitoring(formElement) {
     console.log("🎯 Setting up monitoring for form:", formElement);
 
-    // Monitor form interactions
+    // Check if this is a hs-form-frame container
+    if (formElement.classList.contains('hs-form-frame')) {
+      console.log("📦 Found hs-form-frame container, monitoring for iframe creation...");
+      
+      // Monitor for iframe creation inside this container
+      const iframeObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === 1 && node.tagName === 'IFRAME') {
+              console.log("🖼️ HubSpot iframe created:", node.src);
+              
+              // Set up click monitoring on the iframe itself
+              node.addEventListener('load', () => {
+                console.log("✅ HubSpot iframe loaded");
+                
+                // Monitor clicks on the iframe (indicates form interaction)
+                node.addEventListener('click', () => {
+                  formInteracted = true;
+                  lastInteractionTime = Date.now();
+                  console.log("📝 HubSpot iframe clicked (form interaction)");
+                });
+              });
+            }
+          });
+        });
+      });
+      
+      iframeObserver.observe(formElement, {
+        childList: true,
+        subtree: true
+      });
+      
+      // Also set up general click monitoring on the container
+      formElement.addEventListener('click', function(e) {
+        formInteracted = true;
+        lastInteractionTime = Date.now();
+        console.log("📝 Form container clicked");
+      }, true);
+      
+      return; // Don't set up regular form monitoring for containers
+    }
+
+    // Regular form monitoring for actual form elements
     formElement.addEventListener('click', function(e) {
       formInteracted = true;
       lastInteractionTime = Date.now();
@@ -168,20 +210,56 @@
     }
   }, 100);
 
-  // Method 3: BeforeUnload as final fallback
+  // Method 3: Monitor ANY interaction with the page (more aggressive)
+  let anyInteraction = false;
+  let interactionCount = 0;
+  
+  // Monitor all clicks on the page
+  document.addEventListener('click', function(e) {
+    anyInteraction = true;
+    interactionCount++;
+    lastInteractionTime = Date.now();
+    
+    // Check if click is near a HubSpot form
+    const hsFormFrame = document.querySelector('.hs-form-frame');
+    if (hsFormFrame) {
+      const rect = hsFormFrame.getBoundingClientRect();
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+      
+      // Check if click is within or near the form area
+      if (clickX >= rect.left - 50 && clickX <= rect.right + 50 &&
+          clickY >= rect.top - 50 && clickY <= rect.bottom + 50) {
+        formInteracted = true;
+        console.log("📝 Click detected near HubSpot form area");
+      }
+    }
+  }, true);
+
+  // Method 4: BeforeUnload as final fallback
   window.addEventListener('beforeunload', function(e) {
-    if (formInteracted && !formSubmitted && (Date.now() - lastInteractionTime) < 30000) {
-      console.log("🚨 Page unloading with form interaction - firing pixels!");
+    const shouldTrack = (formInteracted || (anyInteraction && interactionCount >= 3)) && 
+                       !formSubmitted && 
+                       (Date.now() - lastInteractionTime) < 60000; // 1 minute window
+    
+    if (shouldTrack) {
+      console.log("🚨 Page unloading with interaction - firing pixels!");
+      console.log(`  - Form interacted: ${formInteracted}`);
+      console.log(`  - Total interactions: ${interactionCount}`);
+      console.log(`  - Time since last: ${Math.round((Date.now() - lastInteractionTime) / 1000)}s`);
       
       // Use PostHog's send_instantly for reliability
       if (window.posthog) {
         try {
           posthog.capture(TRACKING_CONFIG.posthogEventName, {
             page_path: window.location.pathname,
-            method: "beforeunload"
+            method: "beforeunload",
+            interaction_count: interactionCount,
+            form_interacted: formInteracted
           }, {
             send_instantly: true
           });
+          console.log("✅ PostHog beforeunload fired");
         } catch (error) {
           console.error("PostHog beforeunload error:", error);
         }
@@ -191,12 +269,14 @@
       try {
         if (typeof fbq !== "undefined") {
           fbq("track", TRACKING_CONFIG.facebookEventName);
+          console.log("✅ Facebook beforeunload fired");
         }
         if (typeof rdt !== "undefined") {
           rdt("track", TRACKING_CONFIG.redditEventName);
+          console.log("✅ Reddit beforeunload fired");
         }
       } catch (error) {
-        // Silent fail
+        console.error("Pixel error:", error);
       }
     }
   });
