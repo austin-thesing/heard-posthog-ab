@@ -28,8 +28,8 @@ async function minifyJS(content) {
       .replace(/if\s*\(\s*CONFIG\.debug\s*\)/g, 'if(false)')
       .replace(/const\s+DEBUG\s*=\s*true\s*;/g, 'const DEBUG = false;')
       
-      // Remove console methods (ESBuild will handle the rest)
-      .replace(/console\.(log|warn|info|debug|error|trace|table|group|groupEnd|time|timeEnd)\s*\([^)]*\)\s*;?/g, '');
+      // Skip console removal for now - let ESBuild handle it
+      .replace(/\/\*\s*console\s*\*\/[\s\S]*?\/\*\s*end\s*console\s*\*\//g, ''); // Only remove marked console blocks
 
     // Use ESBuild for proper minification
     const result = await transform(preprocessed, {
