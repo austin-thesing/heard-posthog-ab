@@ -1,8 +1,11 @@
-// Configuration
-const DEBUG_ENABLED = true; // Set to true to enable debug logging for testing
+(function() {
+  "use strict";
+  
+  // Configuration
+  const DEBUG_ENABLED = true; // Set to true to enable debug logging for testing
 
-// Universal HubSpot form tracking configuration
-const TRACKING_CONFIG = {
+  // Universal HubSpot form tracking configuration
+  const TRACKING_CONFIG = {
   // PostHog event name - can be customized per page
   posthogEventName: "hubspot_form_submission",
   // Facebook Pixel event name
@@ -171,13 +174,13 @@ if (DEBUG_ENABLED) {
   }, 5000);
 }
 
-// Utility function to customize tracking for specific pages
-window.customizeHubSpotTracking = function (config) {
-  Object.assign(TRACKING_CONFIG, config);
-  if (DEBUG_ENABLED) {
-    console.log("Tracking config updated:", TRACKING_CONFIG);
-  }
-};
+  // Utility function to customize tracking for specific pages
+  window.customizeHubSpotTracking = function (config) {
+    Object.assign(TRACKING_CONFIG, config);
+    if (DEBUG_ENABLED) {
+      console.log("Tracking config updated:", TRACKING_CONFIG);
+    }
+  };
 
 // FALLBACK: Also try the global HubSpot callback if available
 // This works when forms are NOT in iframes
@@ -236,3 +239,5 @@ if (typeof window.hbspt !== "undefined" && window.hbspt) {
 } else {
   console.log("⚠️ HubSpot global object not found - relying on postMessage only");
 }
+
+})(); // End IIFE

@@ -35,7 +35,7 @@ async function minifyJS(content) {
     const result = await transform(preprocessed, {
       minify: true,
       target: 'es2017', // Good browser support
-      format: 'iife', // Keep as IIFE
+      // Don't force IIFE format, let the code structure determine it
       keepNames: false, // Allow name mangling for smaller size
     });
     
