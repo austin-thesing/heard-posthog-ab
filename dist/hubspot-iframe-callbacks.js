@@ -182,62 +182,118 @@ if (DEBUG_ENABLED) {
     }
   };
 
-// FALLBACK: Also try the global HubSpot callback if available
-// This works when forms are NOT in iframes
-if (typeof window.hbspt !== "undefined" && window.hbspt) {
-  console.log("🔍 HubSpot global object detected, attempting to hook into forms");
-  
-  // Wait for forms object to be available
-  const setupFormHook = () => {
-    if (window.hbspt.forms && window.hbspt.forms.create) {
-      const originalCreate = window.hbspt.forms.create;
-      
-      window.hbspt.forms.create = function(config) {
-        console.log("📝 HubSpot form being created with config:", config);
+  // FALLBACK: Also try the global HubSpot callback if available
+  // This works when forms are NOT in iframes
+  if (typeof window.hbspt !== "undefined" && window.hbspt) {
+    console.log("🔍 HubSpot global object detected, attempting to hook into forms");
+    
+    // Method 1: Hook into forms.create for future forms
+    const setupFormHook = () => {
+      if (window.hbspt.forms && window.hbspt.forms.create) {
+        const originalCreate = window.hbspt.forms.create;
         
-        // Add our callback to the config
-        const originalCallback = config.onFormSubmitted;
-        config.onFormSubmitted = function(data) {
-          console.log("🎉 Form submitted via global callback!", data);
+        window.hbspt.forms.create = function(config) {
+          console.log("📝 HubSpot form being created with config:", config);
           
-          // Fire tracking pixels
-          if (typeof fbq !== "undefined") {
-            fbq("track", "Lead");
-            console.log("✅ Facebook Lead event fired");
-          }
+          // Add our callback to the config
+          const originalCallback = config.onFormSubmitted;
+          config.onFormSubmitted = function(data) {
+            console.log("🎉 Form submitted via global callback!", data);
+            
+            // Fire tracking pixels
+            if (typeof fbq !== "undefined") {
+              fbq("track", "Lead");
+              console.log("✅ Facebook Lead event fired");
+            }
+            
+            if (window.posthog) {
+              posthog.capture(TRACKING_CONFIG.posthogEventName, {
+                form_id: config.formId || "unknown",
+                method: "global_callback"
+              });
+              console.log("✅ PostHog event fired");
+            }
+            
+            if (typeof rdt !== "undefined") {
+              rdt("track", "Lead");
+              console.log("✅ Reddit Lead event fired");
+            }
+            
+            // Call original callback if it existed
+            if (originalCallback) {
+              originalCallback.call(this, data);
+            }
+          };
           
-          if (window.posthog) {
-            posthog.capture(TRACKING_CONFIG.posthogEventName, {
-              form_id: config.formId || "unknown",
-              method: "global_callback"
-            });
-            console.log("✅ PostHog event fired");
-          }
-          
-          if (typeof rdt !== "undefined") {
-            rdt("track", "Lead");
-            console.log("✅ Reddit Lead event fired");
-          }
-          
-          // Call original callback if it existed
-          if (originalCallback) {
-            originalCallback.call(this, data);
-          }
+          // Call original create function
+          return originalCreate.call(this, config);
         };
-        
-        // Call original create function
-        return originalCreate.call(this, config);
-      };
-      console.log("✅ Successfully hooked into HubSpot forms.create");
-    } else {
-      console.log("⏳ Waiting for HubSpot forms object...");
-      setTimeout(setupFormHook, 500);
-    }
-  };
-  
-  setupFormHook();
-} else {
-  console.log("⚠️ HubSpot global object not found - relying on postMessage only");
-}
-
+        console.log("✅ Successfully hooked into HubSpot forms.create");
+      } else {
+        console.log("⏳ Waiting for HubSpot forms object...");
+        setTimeout(setupFormHook, 500);
+      }
+    };
+    
+    setupFormHook();
+    
+    // Method 2: Monitor existing forms on the page
+    setTimeout(() => {
+      console.log("🔍 Looking for existing HubSpot forms on the page...");
+      
+      // Check for HubSpot form containers
+      const formContainers = document.querySelectorAll('[id^="hbspt-form"], .hbspt-form, [class*="hs-form"]');
+      console.log(`Found ${formContainers.length} potential HubSpot form container(s)`);
+      
+      // Monitor form submissions via submit button clicks
+      document.addEventListener('click', function(e) {
+        // Check if clicked element is within a HubSpot form
+        const hsForm = e.target.closest('.hs-form, [class*="hs-form"], [id*="hsForm"]');
+        if (hsForm && (e.target.type === 'submit' || e.target.type === 'button')) {
+          console.log("🎯 HubSpot form submit button clicked!");
+          
+          // Wait a moment for validation, then fire pixels
+          setTimeout(() => {
+            // Check if we're still on the same page (no redirect yet)
+            if (window.location.href.includes(window.location.pathname)) {
+              console.log("📍 Still on same page, firing tracking pixels...");
+              
+              if (typeof fbq !== "undefined") {
+                fbq("track", "Lead");
+                console.log("✅ Facebook Lead event fired (button click)");
+              }
+              
+              if (window.posthog) {
+                posthog.capture(TRACKING_CONFIG.posthogEventName, {
+                  method: "button_click_detection"
+                });
+                console.log("✅ PostHog event fired (button click)");
+              }
+              
+              if (typeof rdt !== "undefined") {
+                rdt("track", "Lead");
+                console.log("✅ Reddit Lead event fired (button click)");
+              }
+            }
+          }, 100);
+        }
+      });
+      
+      // Method 3: Monitor for navigation changes (form redirect)
+      let currentUrl = window.location.href;
+      const checkForRedirect = setInterval(() => {
+        if (window.location.href !== currentUrl) {
+          console.log("🚀 Page is redirecting to:", window.location.href);
+          clearInterval(checkForRedirect);
+        }
+      }, 100);
+      
+      // Stop checking after 30 seconds
+      setTimeout(() => clearInterval(checkForRedirect), 30000);
+      
+    }, 1000);
+    
+  } else {
+    console.log("⚠️ HubSpot global object not found - relying on postMessage only");
+  }
 })(); // End IIFE
